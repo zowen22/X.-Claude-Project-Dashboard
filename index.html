@@ -7,14 +7,16 @@
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
+    html, body { overflow-x: hidden; width: 100%; }
+
     :root {
       --bg: #0a0a0a;
-      --surface: #111111;
-      --border: #222222;
-      --border-subtle: #1a1a1a;
+      --surface: #181818;
+      --border: #2d2d2d;
+      --border-subtle: #202020;
       --text: #e8e8e8;
-      --muted: #666666;
-      --dim: #444444;
+      --muted: #9a9a9a;
+      --dim: #666666;
       --accent: #4f8ef7;
       --badge-planning-bg: #2a1f00; --badge-planning: #f59e0b;
       --badge-progress-bg: #0d1f3c; --badge-progress: #4f8ef7;
@@ -99,7 +101,7 @@
     .badge.planning    { background: var(--badge-planning-bg);  color: var(--badge-planning); }
     .badge.in-progress { background: var(--badge-progress-bg);  color: var(--badge-progress); }
     .badge.complete    { background: var(--badge-complete-bg);  color: var(--badge-complete); }
-    .badge.unknown     { background: #1a1a1a; color: var(--dim); }
+    .badge.unknown     { background: #252525; color: #aaaaaa; }
 
     /* Divider */
     .divider {
@@ -135,6 +137,9 @@
 
     .step-text {
       color: var(--muted);
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
     }
 
     .all-done {
@@ -184,6 +189,10 @@
       color: var(--dim);
       text-decoration: none;
       letter-spacing: 0.01em;
+      display: block;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
     }
 
     .repo-link:hover { color: var(--muted); }
