@@ -1,0 +1,283 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Claude Project Dashboard</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: #f9f9f8;
+      --surface: #ffffff;
+      --border: #e5e5e3;
+      --text: #1a1a1a;
+      --muted: #6b6b6b;
+      --accent: #2563eb;
+      --planning: #d97706;
+      --in-progress: #2563eb;
+      --complete: #16a34a;
+      --radius: 10px;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      padding: 2rem 1rem 4rem;
+    }
+
+    header {
+      max-width: 900px;
+      margin: 0 auto 2.5rem;
+    }
+
+    header h1 {
+      font-size: 1.5rem;
+      font-weight: 600;
+      letter-spacing: -0.02em;
+    }
+
+    header p {
+      color: var(--muted);
+      font-size: 0.875rem;
+      margin-top: 0.25rem;
+    }
+
+    #meta {
+      color: var(--muted);
+      font-size: 0.75rem;
+      margin-top: 0.5rem;
+    }
+
+    #projects {
+      max-width: 900px;
+      margin: 0 auto;
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+      gap: 1rem;
+    }
+
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 1.25rem 1.5rem;
+      display: flex;
+      flex-direction: column;
+      gap: 0.75rem;
+    }
+
+    .card-header {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 0.75rem;
+    }
+
+    .card-header h2 {
+      font-size: 0.9375rem;
+      font-weight: 600;
+      line-height: 1.3;
+    }
+
+    .badge {
+      flex-shrink: 0;
+      font-size: 0.6875rem;
+      font-weight: 500;
+      padding: 0.2em 0.6em;
+      border-radius: 99px;
+      white-space: nowrap;
+    }
+
+    .badge.planning    { background: #fef3c7; color: var(--planning); }
+    .badge.in-progress { background: #dbeafe; color: var(--in-progress); }
+    .badge.complete    { background: #dcfce7; color: var(--complete); }
+    .badge.unknown     { background: #f3f4f6; color: var(--muted); }
+
+    .summary {
+      font-size: 0.8125rem;
+      color: var(--muted);
+      line-height: 1.5;
+    }
+
+    .progress-row {
+      display: flex;
+      align-items: center;
+      gap: 0.625rem;
+    }
+
+    .progress-bar {
+      flex: 1;
+      height: 4px;
+      background: var(--border);
+      border-radius: 99px;
+      overflow: hidden;
+    }
+
+    .progress-fill {
+      height: 100%;
+      border-radius: 99px;
+      background: var(--accent);
+      transition: width 0.4s ease;
+    }
+
+    .progress-fill.complete { background: var(--complete); }
+
+    .progress-label {
+      font-size: 0.75rem;
+      color: var(--muted);
+      width: 2.5rem;
+      text-align: right;
+    }
+
+    .repo-link {
+      font-size: 0.75rem;
+      color: var(--muted);
+      text-decoration: none;
+      margin-top: 0.125rem;
+    }
+
+    .repo-link:hover { color: var(--accent); }
+
+    .card-error .summary { color: #dc2626; }
+
+    .loading, .empty {
+      color: var(--muted);
+      font-size: 0.875rem;
+      grid-column: 1 / -1;
+    }
+
+    @media (max-width: 480px) {
+      body { padding: 1.5rem 1rem 3rem; }
+      #projects { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Claude Project Dashboard</h1>
+    <p>zowen22 · GitHub Projects</p>
+    <p id="meta"></p>
+  </header>
+  <main id="projects"><p class="loading">Loading projects…</p></main>
+
+  <script>
+    const GITHUB_USER = 'zowen22';
+
+    const PROJECTS = [
+      'X.-Claude-Project-Dashboard',
+      '1.-Autonomous-UAVs',
+      '6.-Curriculum-Tool',
+      '7.-Golf-Shot-Dispersion-Tool',
+      '8.-Magic-Band',
+      'BetterGolfLeagueTracker',
+      // add new projects here
+    ];
+
+    function formatName(repo) {
+      return repo
+        .replace(/^\d+\.-/, '')
+        .replace(/X\.-/, '')
+        .replace(/-/g, ' ');
+    }
+
+    async function fetchText(url) {
+      const res = await fetch(url);
+      if (!res.ok) throw new Error(`${res.status}`);
+      const data = await res.json();
+      return atob(data.content.replace(/\n/g, ''));
+    }
+
+    async function fetchProject(repo) {
+      const base = `https://api.github.com/repos/${GITHUB_USER}/${repo}/contents/1. Project Management/`;
+      const [overview, wp] = await Promise.all([
+        fetchText(base + '2. Project Overview.md'),
+        fetchText(base + '3. Work Packages.md'),
+      ]);
+      return { repo, overview, wp };
+    }
+
+    function parseStatus(text) {
+      const m = text.match(/^## Status\s*\n+`([^`]+)`/m);
+      return m ? m[1].trim() : null;
+    }
+
+    function parseSummary(text) {
+      const m = text.match(/^## Summary\s*\n+([\s\S]+?)(?=\n##|\n---|\n\*\*In|\z)/m);
+      if (!m) return '';
+      return m[1].trim().split('\n').slice(0, 2).join(' ').replace(/\s+/g, ' ');
+    }
+
+    function parseProgress(text) {
+      const total = (text.match(/- \[[ xX]\]/g) || []).length;
+      const done  = (text.match(/- \[[xX]\]/g) || []).length;
+      return total === 0 ? null : { done, total, pct: Math.round((done / total) * 100) };
+    }
+
+    function statusSlug(status) {
+      if (!status) return 'unknown';
+      if (status === 'Complete') return 'complete';
+      if (status === 'In Progress') return 'in-progress';
+      if (status === 'Planning') return 'planning';
+      return 'unknown';
+    }
+
+    function renderCard({ repo, overview, wp }) {
+      const status   = parseStatus(overview);
+      const summary  = parseSummary(overview);
+      const progress = parseProgress(wp);
+      const slug     = statusSlug(status);
+      const pct      = progress ? progress.pct : 0;
+      const label    = progress ? `${progress.done}/${progress.total}` : '—';
+
+      return `
+        <article class="card">
+          <div class="card-header">
+            <h2>${formatName(repo)}</h2>
+            <span class="badge ${slug}">${status || 'Unknown'}</span>
+          </div>
+          ${summary ? `<p class="summary">${summary}</p>` : ''}
+          <div class="progress-row">
+            <div class="progress-bar">
+              <div class="progress-fill${pct === 100 ? ' complete' : ''}" style="width:${pct}%"></div>
+            </div>
+            <span class="progress-label">${label}</span>
+          </div>
+          <a class="repo-link" href="https://github.com/${GITHUB_USER}/${repo}" target="_blank" rel="noopener">github.com/…/${repo} →</a>
+        </article>`;
+    }
+
+    function renderError(repo) {
+      return `
+        <article class="card card-error">
+          <div class="card-header">
+            <h2>${formatName(repo)}</h2>
+            <span class="badge unknown">—</span>
+          </div>
+          <p class="summary">Could not load project data.</p>
+          <a class="repo-link" href="https://github.com/${GITHUB_USER}/${repo}" target="_blank" rel="noopener">github.com/…/${repo} →</a>
+        </article>`;
+    }
+
+    async function init() {
+      const container = document.getElementById('projects');
+      const meta      = document.getElementById('meta');
+
+      const results = await Promise.allSettled(PROJECTS.map(fetchProject));
+
+      const html = results.map((r, i) =>
+        r.status === 'fulfilled' ? renderCard(r.value) : renderError(PROJECTS[i])
+      ).join('');
+
+      container.innerHTML = html || '<p class="empty">No projects registered.</p>';
+
+      const loaded = results.filter(r => r.status === 'fulfilled').length;
+      meta.textContent = `${loaded} of ${PROJECTS.length} projects loaded · ${new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}`;
+    }
+
+    init();
+  </script>
+</body>
+</html>
