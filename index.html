@@ -18,12 +18,10 @@
       --text: #e8e8e8;
       --muted: #9a9a9a;
       --dim: #666666;
-      --accent: #4f8ef7;
-      --badge-planning-bg: #2a1f00; --badge-planning: #f59e0b;
-      --badge-progress-bg: #0d1f3c; --badge-progress: #4f8ef7;
-      --badge-complete-bg: #0d2a14; --badge-complete: #34d058;
-      --owner-claude: #4f8ef7;
-      --owner-user: #a78bfa;
+      --bar-planning:    #f59e0b;
+      --bar-progress:    #4f8ef7;
+      --bar-complete:    #34d058;
+      --bar-unknown:     #444444;
       --radius: 8px;
     }
 
@@ -80,38 +78,13 @@
       min-width: 0;
     }
 
-    /* Header row */
-    .card-header {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 0.5rem;
-    }
-
-    .card-header h2 {
+    .card h2 {
       font-size: 0.8125rem;
       font-weight: 600;
       color: var(--text);
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
+      line-height: 1.3;
       min-width: 0;
     }
-
-    .badge {
-      flex-shrink: 0;
-      font-size: 0.625rem;
-      font-weight: 500;
-      padding: 0.15em 0.55em;
-      border-radius: 99px;
-      letter-spacing: 0.03em;
-      text-transform: uppercase;
-    }
-
-    .badge.planning    { background: var(--badge-planning-bg);  color: var(--badge-planning); }
-    .badge.in-progress { background: var(--badge-progress-bg);  color: var(--badge-progress); }
-    .badge.complete    { background: var(--badge-complete-bg);  color: var(--badge-complete); }
-    .badge.unknown     { background: #252525; color: #aaaaaa; }
 
     /* Divider */
     .divider {
@@ -127,35 +100,14 @@
     }
 
     .step {
-      display: flex;
-      align-items: baseline;
-      gap: 0.4rem;
       font-size: 0.6875rem;
       color: var(--muted);
-      line-height: 1.4;
-    }
-
-    .step-owner {
-      flex-shrink: 0;
-      font-weight: 600;
-      font-size: 0.625rem;
-    }
-
-    .step-owner.claude { color: var(--owner-claude); }
-    .step-owner.user   { color: var(--owner-user); }
-    .step-owner.other  { color: var(--dim); }
-
-    .step-text {
-      color: var(--muted);
-      overflow: hidden;
-      text-overflow: ellipsis;
-      white-space: nowrap;
-      min-width: 0;
+      line-height: 1.45;
     }
 
     .all-done {
       font-size: 0.6875rem;
-      color: var(--badge-complete);
+      color: var(--bar-complete);
     }
 
     .no-tasks {
@@ -181,16 +133,18 @@
     .progress-fill {
       height: 100%;
       border-radius: 99px;
-      background: var(--accent);
+      background: var(--bar-unknown);
     }
 
-    .progress-fill.done { background: var(--badge-complete); }
+    .progress-fill.planning    { background: var(--bar-planning); }
+    .progress-fill.in-progress { background: var(--bar-progress); }
+    .progress-fill.complete    { background: var(--bar-complete); }
 
     .progress-label {
       font-size: 0.6875rem;
       color: var(--dim);
       white-space: nowrap;
-      min-width: 3rem;
+      min-width: 2.5rem;
       text-align: right;
     }
 
@@ -199,7 +153,6 @@
       font-size: 0.625rem;
       color: var(--dim);
       text-decoration: none;
-      letter-spacing: 0.01em;
       display: block;
       overflow: hidden;
       text-overflow: ellipsis;
@@ -207,9 +160,6 @@
     }
 
     .repo-link:hover { color: var(--muted); }
-
-    /* Error card */
-    .card-error .step-text { color: #5c2222; }
 
     /* Loading / empty */
     .loading, .empty {
@@ -269,20 +219,8 @@
     }
 
     function parseNextSteps(text, max = 2) {
-      const pattern = /^- \[ \] @(\w+) - (.+)$/gm;
-      const steps = [];
-      let m;
-      while ((m = pattern.exec(text)) !== null && steps.length < max) {
-        steps.push({ owner: m[1].toLowerCase(), text: m[2].trim() });
-      }
-      if (steps.length === 0) {
-        // fallback: unchecked without @owner format
-        const plain = /^- \[ \] (.+)$/gm;
-        while ((m = plain.exec(text)) !== null && steps.length < max) {
-          steps.push({ owner: null, text: m[1].trim() });
-        }
-      }
-      return steps;
+      const lines = text.match(/^- \[ \] .+$/gm) || [];
+      return lines.slice(0, max).map(l => l.replace(/^- \[ \] /, ''));
     }
 
     function parseProgress(text) {
@@ -299,21 +237,10 @@
       return 'unknown';
     }
 
-    function ownerClass(owner) {
-      if (!owner) return 'other';
-      if (owner === 'claude') return 'claude';
-      if (owner === 'user') return 'user';
-      return 'other';
-    }
-
     function renderSteps(steps, allDone) {
       if (allDone) return `<p class="all-done">All tasks complete</p>`;
-      if (!steps.length) return `<p class="no-tasks">No tasks found</p>`;
-      return steps.map(s => `
-        <div class="step">
-          ${s.owner ? `<span class="step-owner ${ownerClass(s.owner)}">@${s.owner}</span>` : ''}
-          <span class="step-text">${s.text}</span>
-        </div>`).join('');
+      if (!steps.length) return `<p class="no-tasks">—</p>`;
+      return steps.map(s => `<p class="step">${s}</p>`).join('');
     }
 
     function renderCard({ repo, overview, wp }) {
@@ -327,16 +254,13 @@
 
       return `
         <article class="card">
-          <div class="card-header">
-            <h2>${formatName(repo)}</h2>
-            <span class="badge ${slug}">${status || '—'}</span>
-          </div>
+          <h2>${formatName(repo)}</h2>
           <div class="divider"></div>
           <div class="next-steps">${renderSteps(steps, allDone)}</div>
           <div class="divider"></div>
           <div class="progress-row">
             <div class="progress-bar">
-              <div class="progress-fill${allDone ? ' done' : ''}" style="width:${pct}%"></div>
+              <div class="progress-fill ${slug}" style="width:${pct}%"></div>
             </div>
             <span class="progress-label">${label}</span>
           </div>
@@ -346,13 +270,10 @@
 
     function renderError(repo) {
       return `
-        <article class="card card-error">
-          <div class="card-header">
-            <h2>${formatName(repo)}</h2>
-            <span class="badge unknown">—</span>
-          </div>
+        <article class="card">
+          <h2>${formatName(repo)}</h2>
           <div class="divider"></div>
-          <div class="next-steps"><p class="no-tasks">Could not load project data</p></div>
+          <p class="no-tasks">Could not load</p>
           <a class="repo-link" href="https://github.com/${GITHUB_USER}/${repo}" target="_blank" rel="noopener">${repo}</a>
         </article>`;
     }
@@ -369,7 +290,7 @@
 
       const loaded = results.filter(r => r.status === 'fulfilled').length;
       const d = new Date();
-      meta.textContent = `zowen22 · ${loaded}/${PROJECTS.length} projects · ${d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}`;
+      meta.textContent = `zowen22 · ${loaded}/${PROJECTS.length} · ${d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}`;
     }
 
     init();
