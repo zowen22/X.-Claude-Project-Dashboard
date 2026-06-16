@@ -105,6 +105,9 @@
       line-height: 1.45;
     }
 
+    .at-claude { color: #4f8ef7; font-weight: 600; }
+    .at-user   { color: #a78bfa; font-weight: 600; }
+
     .all-done {
       font-size: 0.6875rem;
       color: var(--bar-complete);
@@ -218,9 +221,15 @@
       return m ? m[1].trim() : null;
     }
 
+    function highlightOwners(text) {
+      return text
+        .replace(/@claude/g, '<span class="at-claude">@claude</span>')
+        .replace(/@user/g,   '<span class="at-user">@user</span>');
+    }
+
     function parseNextSteps(text, max = 2) {
       const lines = text.match(/^- \[ \] .+$/gm) || [];
-      return lines.slice(0, max).map(l => l.replace(/^- \[ \] /, ''));
+      return lines.slice(0, max).map(l => highlightOwners(l.replace(/^- \[ \] /, '')));
     }
 
     function parseProgress(text) {
