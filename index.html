@@ -251,12 +251,11 @@
     async function fetchText(url) {
       const res = await fetch(url);
       if (!res.ok) throw new Error(res.status);
-      const d = await res.json();
-      return atob(d.content.replace(/\n/g, ''));
+      return res.text();
     }
 
     async function fetchProject(repo) {
-      const base = `https://api.github.com/repos/${GITHUB_USER}/${repo}/contents/1.%20Project%20Management/`;
+      const base = `https://raw.githubusercontent.com/${GITHUB_USER}/${repo}/main/1.%20Project%20Management/`;
       const [overview, wp] = await Promise.all([
         fetchText(base + '2.%20Project%20Overview.md'),
         fetchText(base + '3.%20Work%20Packages.md'),
