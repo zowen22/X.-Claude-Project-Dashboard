@@ -211,6 +211,13 @@
       return res.text();
     }
 
+    async function fetchMeta(repo) {
+      const res = await fetch(`https://api.github.com/repos/${GITHUB_USER}/${repo}`);
+      if (!res.ok) return 0;
+      const d = await res.json();
+      return new Date(d.pushed_at).getTime();
+    }
+
     async function fetchProject(repo) {
       const base = `https://raw.githubusercontent.com/${GITHUB_USER}/${repo}/main/1.%20Project%20Management/`;
       const [overview, wp] = await Promise.all([
@@ -295,11 +302,20 @@
       const container = document.getElementById('projects');
       const meta      = document.getElementById('meta');
 
-      const results = await Promise.allSettled(PROJECTS.map(fetchProject));
+      const [results, metas] = await Promise.all([
+        Promise.allSettled(PROJECTS.map(fetchProject)),
+        Promise.allSettled(PROJECTS.map(fetchMeta)),
+      ]);
 
-      container.innerHTML = results.map((r, i) =>
-        r.status === 'fulfilled' ? renderCard(r.value) : renderError(PROJECTS[i])
-      ).join('') || '<p class="empty">No projects registered.</p>';
+      const order = PROJECTS
+        .map((_, i) => ({ i, t: metas[i].status === 'fulfilled' ? metas[i].value : 0 }))
+        .sort((a, b) => b.t - a.t)
+        .map(x => x.i);
+
+      container.innerHTML = order.map(i => {
+        const r = results[i];
+        return r.status === 'fulfilled' ? renderCard(r.value) : renderError(PROJECTS[i]);
+      }).join('') || '<p class="empty">No projects registered.</p>';
 
       const loaded = results.filter(r => r.status === 'fulfilled').length;
       const d = new Date();
