@@ -137,6 +137,23 @@
       min-width: 0;
     }
 
+    .head-right {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      flex-shrink: 0;
+    }
+
+    .chevron {
+      font-size: 0.625rem;
+      color: var(--dim);
+      transition: transform 150ms ease;
+    }
+
+    @media (min-width: 1000px) {
+      .chevron { display: none; }
+    }
+
     .card h2 {
       font-size: 0.8125rem;
       font-weight: 600;
@@ -313,6 +330,27 @@
       body { padding: 1.25rem 0.75rem 3rem; }
       .card { padding: 0.75rem; }
     }
+
+    /* Tap-to-expand — mobile & tablet only; desktop cards already show full detail */
+    @media (max-width: 999px) {
+      .card[data-expandable] { cursor: pointer; }
+
+      .card.expanded {
+        grid-column: 1 / -1;
+        border-color: var(--dim);
+      }
+
+      .card.expanded .chevron { transform: rotate(180deg); }
+
+      .card.expanded .summary,
+      .card.expanded .step {
+        display: block;
+        -webkit-line-clamp: unset;
+        overflow: visible;
+      }
+
+      .card.expanded .card-foot { display: flex; }
+    }
   </style>
 </head>
 <body>
@@ -433,10 +471,13 @@
       const label    = progress ? `${progress.done} / ${progress.total}` : '—';
 
       return `
-        <article class="card">
+        <article class="card" data-expandable role="button" tabindex="0" aria-expanded="false">
           <div class="card-head">
             <h2>${formatName(repo)}</h2>
-            <span class="status-badge"><span class="status-dot ${slug}"></span>${status || 'Unknown'}</span>
+            <div class="head-right">
+              <span class="status-badge"><span class="status-dot ${slug}"></span>${status || 'Unknown'}</span>
+              <span class="chevron" aria-hidden="true">⌄</span>
+            </div>
           </div>
           ${summary ? `<p class="summary">${summary}</p>` : ''}
           <div class="divider"></div>
@@ -490,6 +531,27 @@
       metaText.textContent = `zowen22 · ${loaded}/${PROJECTS.length} · ${d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}`;
       refreshBtn.disabled = false;
     }
+
+    function toggleCard(card) {
+      const expanded = card.classList.toggle('expanded');
+      card.setAttribute('aria-expanded', String(expanded));
+    }
+
+    const projectsEl = document.getElementById('projects');
+
+    projectsEl.addEventListener('click', (e) => {
+      if (e.target.closest('a')) return; // let the repo link work normally
+      const card = e.target.closest('.card[data-expandable]');
+      if (card) toggleCard(card);
+    });
+
+    projectsEl.addEventListener('keydown', (e) => {
+      if (e.key !== 'Enter' && e.key !== ' ') return;
+      const card = e.target.closest('.card[data-expandable]');
+      if (!card) return;
+      e.preventDefault();
+      toggleCard(card);
+    });
 
     document.getElementById('refreshBtn').addEventListener('click', init);
     init();
