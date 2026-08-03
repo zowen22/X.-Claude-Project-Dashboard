@@ -50,6 +50,29 @@
       color: var(--muted);
       font-size: 0.75rem;
       margin-top: 0.2rem;
+      display: flex;
+      align-items: center;
+      gap: 0.6rem;
+    }
+
+    #refreshBtn {
+      font: inherit;
+      color: var(--muted);
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 0.15rem 0.5rem;
+      cursor: pointer;
+    }
+
+    #refreshBtn:hover {
+      color: var(--text);
+      border-color: var(--dim);
+    }
+
+    #refreshBtn:disabled {
+      opacity: 0.5;
+      cursor: default;
     }
 
     #projects {
@@ -288,7 +311,10 @@
 <body>
   <header>
     <h1>Project Dashboard</h1>
-    <p id="meta">zowen22 · loading…</p>
+    <p id="meta">
+      <span id="metaText">zowen22 · loading…</span>
+      <button id="refreshBtn" type="button" aria-label="Refresh">↻ Refresh</button>
+    </p>
   </header>
   <main id="projects"><p class="loading">Loading…</p></main>
 
@@ -312,13 +338,13 @@
     }
 
     async function fetchText(url) {
-      const res = await fetch(url);
+      const res = await fetch(url, { cache: 'no-store' });
       if (!res.ok) throw new Error(res.status);
       return res.text();
     }
 
     async function fetchMeta(repo) {
-      const res = await fetch(`https://api.github.com/repos/${GITHUB_USER}/${repo}`);
+      const res = await fetch(`https://api.github.com/repos/${GITHUB_USER}/${repo}`, { cache: 'no-store' });
       if (!res.ok) return 0;
       const d = await res.json();
       return new Date(d.pushed_at).getTime();
@@ -433,8 +459,12 @@
     }
 
     async function init() {
-      const container = document.getElementById('projects');
-      const meta      = document.getElementById('meta');
+      const container   = document.getElementById('projects');
+      const metaText    = document.getElementById('metaText');
+      const refreshBtn  = document.getElementById('refreshBtn');
+
+      refreshBtn.disabled = true;
+      metaText.textContent = 'zowen22 · loading…';
 
       const results = await Promise.allSettled(PROJECTS.map(fetchProject));
 
@@ -450,9 +480,11 @@
 
       const loaded = results.filter(r => r.status === 'fulfilled').length;
       const d = new Date();
-      meta.textContent = `zowen22 · ${loaded}/${PROJECTS.length} · ${d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}`;
+      metaText.textContent = `zowen22 · ${loaded}/${PROJECTS.length} · ${d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}`;
+      refreshBtn.disabled = false;
     }
 
+    document.getElementById('refreshBtn').addEventListener('click', init);
     init();
   </script>
 </body>
