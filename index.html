@@ -426,7 +426,7 @@
 
     function parseNextSteps(text, max = 5) {
       const lines = text.match(/^- \[ \] .+$/gm) || [];
-      return lines.slice(0, max).map(l => highlightOwners(l.replace(/^- \[ \] /, '')));
+      return lines.slice(-max).map(l => highlightOwners(l.replace(/^- \[ \] /, '')));
     }
 
     function parseProgress(text) {
