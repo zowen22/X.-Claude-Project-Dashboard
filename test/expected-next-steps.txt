@@ -1,0 +1,37 @@
+### 1.-Autonomous-UAVs
+  [ 66] @claude - Component recommendations (5" quad + companion computer)
+  [ 80] @claude - CV targeting pipeline adaptation for upward-facing camera (air-to-air)
+  [ 22] @user - Build and test
+  [ 72] @claude - Airframe options (longer wingspan, higher-efficiency platform)
+  [ 51] @user - Build and configure for ISR mission profile
+### 6.-Curriculum-Tool
+  [ 60] @user - Provision Supabase project (requires account access)
+  [ 87] @claude - Configure Supabase Storage bucket for assets (after user provisions Supabase)
+  [ 66] @user - Review and refine prompt templates for curriculum accuracy
+  [ 72] @claude - Implement unit status transitions (Draft → Review → Published)
+### 7.-Golf-Shot-Dispersion-Tool
+  [ 45] @user - Screenshots (6.7", 6.5", 5.5" iPhone)
+  [ 50] @user - App Store description and keyword research
+  [ 53] @user - Privacy policy and Terms of Service URLs live
+  [ 63] @user - Subscription disclosure configured in App Store Connect
+  [ 30] @user - Submit to Apple review
+### 8.-Magic-Band
+  [ 86] @user - Design or source ornament enclosure with room for Arduino + RFID + pixel rings
+  [ 60] @user - Design or source floor power box enclosure for relay
+  [ 26] @user - PCB layout routing
+  [ 46] @claude - PCB layout for the barrel-jack board
+  [ 78] @user - Confirm ornament shell interior dimensions to set board outline target
+### 9.-High-Ground-Coffee-Club
+  [ 75] @claude - Write remaining ad group copy for Decaf, Gift, and Pods ad groups
+  [ 50] @user - Actually create the campaign in Google Ads
+  [ 67] @claude - Set up conversion tracking before spending real ad budget
+  [ 96] @user - Don't launch real ad spend until Shopify Payments is enabled and checkout is confirmed …
+  [ 98] @user - Phase 2: connect Google Merchant Center for Performance Max/Shopping campaigns, once the …
+### BetterGolfLeagueTracker
+  [ 24] @claude - UI/UX overhaul
+  [ 59] @claude - Multi-tenant onboarding flow (league self-signup)
+  [ 47] @user - Upgrade Render to production-grade plan
+  [ 94] @user/@claude - Revisit migrating auth to Supabase Auth — evaluate when auth pain points arise
+  [107] @user/@claude - Support inbox for user-reported issues, with Claude given some access to triage/fix reports
+### X.-Claude-Project-Dashboard
+  [ 95] @user - Decide how to handle private 10.-Personal-Finances repo (make public / exclude / other)

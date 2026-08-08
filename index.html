@@ -424,9 +424,82 @@
         .replace(/@user/g,   '<span class="at-user">@user</span>');
     }
 
+    // Work Packages items carry a lot of inline detail (rationale, dates, links) so a
+    // session can resume a task cold. Cards show only the leading headline of each item.
+    const STEP_BUDGET    = 95; // at or under this, the line is shown exactly as written
+    const STEP_CAP       = 90; // hard truncation when no natural boundary exists
+    const STEP_MIN       = 12; // a shorter headline says nothing — try the next boundary
+    const STEP_MIN_COLON = 18; // "Phase 2 (later):" is a label, not a headline
+
+    // A WP heading marked finished or parked is skipped: completed packages routinely
+    // keep unchecked stragglers, which would otherwise crowd out genuinely live work.
+    const SECTION_DEAD  = /\b(complete|completed|done|skipped|paused|deferred|on hold|abandoned|dropped|archived)\b/i;
+    const SECTION_ALIVE = /\bin progress\b/i;
+
+    function sectionIsDead(heading) {
+      const m = heading.match(/\*\(([\s\S]*)$/) || heading.match(/\(([^()]*)\)\s*$/);
+      if (!m) return false;
+      return SECTION_DEAD.test(m[1]) && !SECTION_ALIVE.test(m[1]);
+    }
+
+    function escapeHtml(s) {
+      return s.replace(/[&<>"']/g, c => (
+        { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]
+      ));
+    }
+
+    // trailing punctuation and any '(' left unclosed by a cut read as truncation artifacts
+    function tidy(s) {
+      while ((s.split('(').length) > (s.split(')').length)) s = s.slice(0, s.lastIndexOf('('));
+      return s.replace(/[\s,;:—–-]+$/, '');
+    }
+
+    function stepHeadline(body) {
+      const m    = body.match(/^((?:@[\w/]+[\s/]*)+?)-\s*([\s\S]*)$/);
+      const pre  = m ? m[1].trim() + ' - ' : '';
+      let rest   = (m ? m[2] : body).replace(/[*`]/g, '').replace(/\s+/g, ' ').trim();
+
+      if (pre.length + rest.length <= STEP_BUDGET) return pre + rest;
+
+      rest = rest.replace(/\s*\([^()]{0,60}\)/g, ''); // drop short asides, keep the spine
+      if (pre.length + rest.length <= STEP_BUDGET) return pre + tidy(rest);
+
+      const cuts = [];
+      for (const re of [/ — /g, / – /g, / -- /g]) {
+        let mm; while ((mm = re.exec(rest)) !== null) cuts.push(mm.index);
+      }
+      const colon = /: /g;
+      let cm; while ((cm = colon.exec(rest)) !== null) {
+        if (cm.index >= STEP_MIN_COLON) cuts.push(cm.index);
+      }
+      for (const pos of cuts.sort((a, b) => a - b)) {
+        if (pos < STEP_MIN) continue;
+        const cut = tidy(rest.slice(0, pos));
+        if (cut.length >= STEP_MIN) return pre + cut;
+      }
+      const hard = rest.slice(0, STEP_CAP);
+      const sp   = hard.lastIndexOf(' ');
+      return pre + tidy(sp > 0 ? hard.slice(0, sp) : hard) + ' …';
+    }
+
     function parseNextSteps(text, max = 5) {
-      const lines = text.match(/^- \[ \] .+$/gm) || [];
-      return lines.slice(-max).map(l => highlightOwners(l.replace(/^- \[ \] /, '')));
+      const live = [];
+      let heading = '';
+      for (const line of text.split('\n')) {
+        if (/^#{2,4}\s/.test(line)) heading = line.replace(/^#+\s*/, '').trim();
+        else if (/^- \[ \] /.test(line) && !sectionIsDead(heading)) live.push(line.slice(6));
+      }
+      const seen = new Set(), out = [];
+      for (let i = live.length - 1; i >= 0 && out.length < max; i--) {
+        // shortening is cosmetic — never let it cost us the task itself
+        let h;
+        try { h = stepHeadline(live[i]); } catch (e) { h = live[i]; }
+        const key = h.toLowerCase();
+        if (seen.has(key)) continue; // the same task often recurs across work packages
+        seen.add(key);
+        out.push(h);
+      }
+      return out.reverse().map(h => highlightOwners(escapeHtml(h)));
     }
 
     function parseProgress(text) {
