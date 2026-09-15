@@ -351,6 +351,117 @@
 
       .card.expanded .card-foot { display: flex; }
     }
+
+    #manageBtn {
+      font: inherit;
+      color: var(--muted);
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 0.15rem 0.5rem;
+      cursor: pointer;
+    }
+
+    #manageBtn:hover {
+      color: var(--text);
+      border-color: var(--dim);
+    }
+
+    .manage-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.6);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 1rem;
+      z-index: 100;
+    }
+
+    .manage-overlay[hidden] { display: none; }
+
+    .manage-panel {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      width: 100%;
+      max-width: 420px;
+      max-height: 80vh;
+      display: flex;
+      flex-direction: column;
+      padding: 1rem 1.125rem;
+      gap: 0.75rem;
+    }
+
+    .manage-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .manage-head h2 {
+      font-size: 0.9375rem;
+      font-weight: 600;
+      color: var(--text);
+    }
+
+    #manageClose {
+      background: none;
+      border: none;
+      color: var(--muted);
+      font-size: 0.875rem;
+      line-height: 1;
+      cursor: pointer;
+    }
+
+    #manageClose:hover { color: var(--text); }
+
+    .manage-status {
+      font-size: 0.75rem;
+      color: var(--muted);
+    }
+
+    .manage-list {
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+      padding-right: 0.25rem;
+    }
+
+    .manage-item {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      font-size: 0.8125rem;
+      color: var(--text);
+      cursor: pointer;
+    }
+
+    .manage-item input { accent-color: var(--bar-progress); }
+
+    .manage-foot {
+      display: flex;
+      justify-content: flex-end;
+      gap: 0.5rem;
+      border-top: 1px solid var(--border-subtle);
+      padding-top: 0.75rem;
+    }
+
+    .btn-ghost, .btn-primary {
+      font: inherit;
+      font-size: 0.75rem;
+      border-radius: 6px;
+      padding: 0.35rem 0.75rem;
+      cursor: pointer;
+      border: 1px solid var(--border);
+    }
+
+    .btn-ghost { background: var(--surface); color: var(--muted); }
+    .btn-ghost:hover { color: var(--text); border-color: var(--dim); }
+
+    .btn-primary { background: var(--bar-progress); color: #fff; border-color: var(--bar-progress); }
+    .btn-primary:hover { opacity: 0.9; }
   </style>
 </head>
 <body>
@@ -359,24 +470,59 @@
     <p id="meta">
       <span id="metaText">zowen22 · loading…</span>
       <button id="refreshBtn" type="button" aria-label="Refresh">↻ Refresh</button>
+      <button id="manageBtn" type="button" aria-label="Manage projects">⚙</button>
     </p>
   </header>
   <main id="projects"><p class="loading">Loading…</p></main>
 
+  <div id="manageOverlay" class="manage-overlay" hidden>
+    <div class="manage-panel" role="dialog" aria-modal="true" aria-labelledby="manageTitle">
+      <div class="manage-head">
+        <h2 id="manageTitle">Manage Projects</h2>
+        <button id="manageClose" type="button" aria-label="Close">✕</button>
+      </div>
+      <p id="manageStatus" class="manage-status">Loading repos…</p>
+      <div id="manageList" class="manage-list"></div>
+      <div class="manage-foot">
+        <button id="manageCancel" type="button" class="btn-ghost">Cancel</button>
+        <button id="manageSave" type="button" class="btn-primary">Save</button>
+      </div>
+    </div>
+  </div>
+
   <script>
     const GITHUB_USER = 'zowen22';
 
-    const PROJECTS = [
+    // Fallback shown the first time the dashboard loads on a browser, before the
+    // user has picked anything via the "Manage Projects" panel (⚙, see below).
+    const DEFAULT_PROJECTS = [
       'X.-Claude-Project-Dashboard',
       '1.-Autonomous-UAVs',
       '6.-Curriculum-Tool',
       '7.-Golf-Shot-Dispersion-Tool',
       '8.-Magic-Band',
       '9.-High-Ground-Coffee-Club',
-      'BetterGolfLeagueTracker',
+      '3.-Better-Golf-League-Tracker',
       // 10.-Personal-Finances is private — client-side fetch can't reach it, excluded until it's public
-      // add new projects here
     ];
+
+    // Which repos to show is a per-browser preference (private repos never show —
+    // the dashboard has no auth token to fetch them regardless of selection).
+    const SELECTED_KEY = 'dashboard.selectedProjects';
+
+    function loadSelectedProjects() {
+      try {
+        const parsed = JSON.parse(localStorage.getItem(SELECTED_KEY));
+        if (Array.isArray(parsed) && parsed.every(p => typeof p === 'string')) return parsed;
+      } catch (e) { /* corrupt or missing — fall through to default */ }
+      return DEFAULT_PROJECTS.slice();
+    }
+
+    function saveSelectedProjects(list) {
+      try { localStorage.setItem(SELECTED_KEY, JSON.stringify(list)); } catch (e) { /* storage unavailable */ }
+    }
+
+    let PROJECTS = loadSelectedProjects();
 
     function formatName(repo) {
       return repo.replace(/^\d+\.-/, '').replace(/^X\.-/, '').replace(/-/g, ' ');
@@ -433,13 +579,18 @@
 
     // A WP heading marked finished or parked is skipped: completed packages routinely
     // keep unchecked stragglers, which would otherwise crowd out genuinely live work.
+    // A heading with no marker of its own inherits its parent heading's status, so a
+    // plain "### WP3.1 - ..." sub-heading under a "## Phase 3 ... *(PAUSED)*" phase
+    // stays dead too, instead of resetting to alive just because it lacks its own tag.
     const SECTION_DEAD  = /\b(complete|completed|done|skipped|paused|deferred|on hold|abandoned|dropped|archived)\b/i;
     const SECTION_ALIVE = /\bin progress\b/i;
 
-    function sectionIsDead(heading) {
+    function headingVerdict(heading) {
       const m = heading.match(/\*\(([\s\S]*)$/) || heading.match(/\(([^()]*)\)\s*$/);
-      if (!m) return false;
-      return SECTION_DEAD.test(m[1]) && !SECTION_ALIVE.test(m[1]);
+      if (!m) return null; // no marker of its own -- inherit from the parent heading
+      if (SECTION_ALIVE.test(m[1])) return false;
+      if (SECTION_DEAD.test(m[1])) return true;
+      return null;
     }
 
     function escapeHtml(s) {
@@ -484,10 +635,18 @@
 
     function parseNextSteps(text, max = 5) {
       const live = [];
-      let heading = '';
+      const stack = []; // {level, dead} chain of headings currently open, shallowest first
       for (const line of text.split('\n')) {
-        if (/^#{2,4}\s/.test(line)) heading = line.replace(/^#+\s*/, '').trim();
-        else if (/^- \[ \] /.test(line) && !sectionIsDead(heading)) live.push(line.slice(6));
+        const hm = line.match(/^(#{2,4})\s+(.*)$/);
+        if (hm) {
+          const level = hm[1].length;
+          while (stack.length && stack[stack.length - 1].level >= level) stack.pop();
+          const verdict    = headingVerdict(hm[2].trim());
+          const parentDead = stack.length ? stack[stack.length - 1].dead : false;
+          stack.push({ level, dead: verdict !== null ? verdict : parentDead });
+        } else if (/^- \[ \] /.test(line) && !(stack.length && stack[stack.length - 1].dead)) {
+          live.push(line.slice(6));
+        }
       }
       const seen = new Set(), out = [];
       for (let i = live.length - 1; i >= 0 && out.length < max; i--) {
@@ -627,6 +786,63 @@
     });
 
     document.getElementById('refreshBtn').addEventListener('click', init);
+
+    // Manage Projects — lets the user pick which of their GitHub repos show as cards,
+    // independent of DEFAULT_PROJECTS. Selection is per-browser (localStorage), not synced.
+    const manageBtn     = document.getElementById('manageBtn');
+    const manageOverlay = document.getElementById('manageOverlay');
+    const manageStatus  = document.getElementById('manageStatus');
+    const manageList    = document.getElementById('manageList');
+
+    let allRepoNamesCache = null;
+
+    async function fetchAllRepoNames() {
+      const res = await fetch(
+        `https://api.github.com/users/${GITHUB_USER}/repos?per_page=100&sort=full_name`,
+        { cache: 'no-store' }
+      );
+      if (!res.ok) throw new Error(res.status);
+      const repos = await res.json();
+      return repos.map(r => r.name).sort((a, b) => a.localeCompare(b));
+    }
+
+    function renderManageList(allRepos, selected) {
+      const isSelected = new Set(selected);
+      manageList.innerHTML = allRepos.map(repo => `
+        <label class="manage-item">
+          <input type="checkbox" value="${escapeHtml(repo)}" ${isSelected.has(repo) ? 'checked' : ''}>
+          <span>${escapeHtml(formatName(repo))}</span>
+        </label>`).join('');
+    }
+
+    async function openManage() {
+      manageOverlay.hidden = false;
+      manageStatus.textContent = 'Loading repos…';
+      manageList.innerHTML = '';
+      try {
+        if (!allRepoNamesCache) allRepoNamesCache = await fetchAllRepoNames();
+        manageStatus.textContent =
+          `${allRepoNamesCache.length} public repos — private repos can't load here (no auth token)`;
+        renderManageList(allRepoNamesCache, PROJECTS);
+      } catch (e) {
+        manageStatus.textContent = 'Could not load repo list — check connection and try again.';
+      }
+    }
+
+    function closeManage() { manageOverlay.hidden = true; }
+
+    manageBtn.addEventListener('click', openManage);
+    document.getElementById('manageClose').addEventListener('click', closeManage);
+    document.getElementById('manageCancel').addEventListener('click', closeManage);
+    manageOverlay.addEventListener('click', (e) => { if (e.target === manageOverlay) closeManage(); });
+
+    document.getElementById('manageSave').addEventListener('click', () => {
+      PROJECTS = Array.from(manageList.querySelectorAll('input:checked')).map(cb => cb.value);
+      saveSelectedProjects(PROJECTS);
+      closeManage();
+      init();
+    });
+
     init();
   </script>
 </body>

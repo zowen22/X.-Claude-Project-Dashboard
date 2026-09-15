@@ -16,7 +16,7 @@ Requires `gh` authenticated against the zowen22 org.
 import base64, re, subprocess, sys, pathlib
 
 REPOS = ['1.-Autonomous-UAVs', '6.-Curriculum-Tool', '7.-Golf-Shot-Dispersion-Tool',
-         '8.-Magic-Band', '9.-High-Ground-Coffee-Club', 'BetterGolfLeagueTracker',
+         '8.-Magic-Band', '9.-High-Ground-Coffee-Club', '3.-Better-Golf-League-Tracker',
          'X.-Claude-Project-Dashboard']
 WP_PATH = '1. Project Management/3. Work Packages.md'
 SNAPSHOT = pathlib.Path(__file__).parent / 'expected-next-steps.txt'
@@ -33,9 +33,15 @@ def fetch(repo):
     return base64.b64decode(p.stdout).decode('utf-8', 'replace') if p.returncode == 0 else None
 
 
-def section_is_dead(heading):
+def heading_verdict(heading):
     m = re.search(r'\*\(([\s\S]*)$', heading) or re.search(r'\(([^()]*)\)\s*$', heading)
-    return bool(m) and bool(DEAD.search(m.group(1))) and not ALIVE.search(m.group(1))
+    if not m:
+        return None  # no marker of its own -- inherit from the parent heading
+    if ALIVE.search(m.group(1)):
+        return False
+    if DEAD.search(m.group(1)):
+        return True
+    return None
 
 
 def tidy(s):
@@ -69,11 +75,17 @@ def step_headline(body):
 
 
 def next_steps(text, max_n=5):
-    live, heading = [], ''
+    live, stack = [], []  # stack: [{'level': int, 'dead': bool}, ...], shallowest first
     for line in text.split('\n'):
-        if re.match(r'^#{2,4}\s', line):
-            heading = re.sub(r'^#+\s*', '', line).strip()
-        elif line.startswith('- [ ] ') and not section_is_dead(heading):
+        hm = re.match(r'^(#{2,4})\s+(.*)$', line)
+        if hm:
+            level = len(hm.group(1))
+            while stack and stack[-1]['level'] >= level:
+                stack.pop()
+            verdict = heading_verdict(hm.group(2).strip())
+            parent_dead = stack[-1]['dead'] if stack else False
+            stack.append({'level': level, 'dead': parent_dead if verdict is None else verdict})
+        elif line.startswith('- [ ] ') and not (stack and stack[-1]['dead']):
             live.append(line[6:])
     seen, out = set(), []
     for body in reversed(live):
