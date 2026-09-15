@@ -16,22 +16,22 @@
   [ 63] @user - Subscription disclosure configured in App Store Connect
   [ 30] @user - Submit to Apple review
 ### 8.-Magic-Band
+  [ 66] @claude - Add UID whitelist (optional #define UID_FILTER — future)
+  [ 90] @user - Document actual pixel counts and ring layout (confirm NUMPIXELS1/2 match hardware)
+  [ 84] @user - Confirm relay type and 120V wiring safety (normally-open vs normally-closed)
   [ 86] @user - Design or source ornament enclosure with room for Arduino + RFID + pixel rings
   [ 60] @user - Design or source floor power box enclosure for relay
-  [ 26] @user - PCB layout routing
-  [ 46] @claude - PCB layout for the barrel-jack board
-  [ 78] @user - Confirm ornament shell interior dimensions to set board outline target
 ### 9.-High-Ground-Coffee-Club
   [ 75] @claude - Write remaining ad group copy for Decaf, Gift, and Pods ad groups
   [ 50] @user - Actually create the campaign in Google Ads
   [ 67] @claude - Set up conversion tracking before spending real ad budget
   [ 96] @user - Don't launch real ad spend until Shopify Payments is enabled and checkout is confirmed …
   [ 98] @user - Phase 2: connect Google Merchant Center for Performance Max/Shopping campaigns, once the …
-### BetterGolfLeagueTracker
-  [ 24] @claude - UI/UX overhaul
-  [ 59] @claude - Multi-tenant onboarding flow (league self-signup)
+### 3.-Better-Golf-League-Tracker
+  [ 56] @user - Auto-highlight skins winners on League Standings
+  [ 98] @user - P4-2: Review cascade-delete FK behavior for courses/tees in Supabase dashboard; document …
   [ 47] @user - Upgrade Render to production-grade plan
   [ 94] @user/@claude - Revisit migrating auth to Supabase Auth — evaluate when auth pain points arise
-  [107] @user/@claude - Support inbox for user-reported issues, with Claude given some access to triage/fix reports
+  [ 29] @user/@claude - Support inbox
 ### X.-Claude-Project-Dashboard
   [ 95] @user - Decide how to handle private 10.-Personal-Finances repo (make public / exclude / other)
